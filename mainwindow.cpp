@@ -1,9 +1,12 @@
 // mainwindow.cpp
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include <QTabWidget>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
+#include <QComboBox>
+#include <QCompleter>
+#include <QMap>
+#include <QSignalBlocker>
 #include <QFormLayout>
 #include <QGridLayout>
 #include <QPushButton>
@@ -22,12 +25,8 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
-    QTabWidget *tabs = new QTabWidget(this);
     QWidget *paperLikeTab = new QWidget();
-    QWidget *modernTab = new QWidget();
-    tabs->addTab(paperLikeTab, "Интерфейс №1");
-    tabs->addTab(modernTab, "Интерфейс №2");
-    setCentralWidget(tabs);
+    setCentralWidget(paperLikeTab);
 
     // ВЕРСИЯ 1
     QVBoxLayout *layout1 = new QVBoxLayout(paperLikeTab);
@@ -42,7 +41,38 @@ MainWindow::MainWindow(QWidget *parent)
     requisitesLayout->addRow("по ОКПО:", new QLineEdit());
     requisitesLayout->addRow("Организация:", new QLineEdit());
     requisitesLayout->addRow("Структурное подразделение:", new QLineEdit());
-    requisitesLayout->addRow("Вид деятельности по ОКДП:", new QLineEdit());
+
+    // ===== Выпадающий список для ОКДП =====
+    QComboBox *okdpBox = new QComboBox();
+    okdpBox->setEditable(true);
+    QStringList okdpList = {
+        "Продукция и услуги сельского хозяйства, охоты и лесоводства",
+        "Рыболовство",
+        "Горнодобывающая промышленность и разработка карьеров",
+        "Обрабатывающая промышленность",
+        "Электроэнергия, газ и водоснабжение",
+        "Строительство",
+        "Оптовая и розничная торговля; ремонт автомобилей, бытовых приборов и предметов личного пользования",
+        "Гостиницы и рестораны",
+        "Транспорт, складское хозяйство и связь",
+        "Финансовое посредничество",
+        "Деятельность по операциям с недвижимым имуществом и арендой; деятельность исследовательская и коммерческая",
+        "Государственное управление и оборона; обязательное социальное страхование",
+        "Образование",
+        "Здравоохранение и социальные услуги",
+        "Деятельность по предоставлению коммунальных, социальных и персональных услуг прочих",
+        "Деятельность по ведению частных домашних хозяйств с наемным обслуживанием",
+        "Деятельность экстерриториальных организаций и органов"
+    };
+    okdpBox->addItem("");
+    okdpBox->addItems(okdpList);
+
+    QCompleter *okdpCompleter = new QCompleter(okdpList, this);
+    okdpCompleter->setCaseSensitivity(Qt::CaseInsensitive);
+    okdpCompleter->setFilterMode(Qt::MatchContains);
+    okdpBox->setCompleter(okdpCompleter);
+    requisitesLayout->addRow("Вид деятельности по ОКДП:", okdpBox);
+
     layout1->addWidget(requisitesBox);
 
     QLabel *title = new QLabel("ЖУРНАЛ УЧЕТА СТОЛОВОЙ ПОСУДЫ И ПРИБОРОВ, ВЫДАВАЕМЫХ ПОД ОТЧЕТ РАБОТНИКАМ ОРГАНИЗАЦИИ");
@@ -119,6 +149,91 @@ MainWindow::MainWindow(QWidget *parent)
     // Таблица: заголовок + цифры + данные
     QTableWidget *table1 = new QTableWidget(11, 21); // 2 строки заголовка + строка номеров + 10 строк данных
     table1->setFrameShape(QFrame::NoFrame);
+
+    QMap<QString, QString> dishes = {
+        {"Тарелка", "001"},
+        {"Кружка", "002"},
+        {"Ложка", "003"},
+        {"Вилка", "004"}
+    };
+
+    QMap<QString, QString> okei = {
+        {"штука", "796"},
+        {"набор", "715"},
+        {"пара", "778"}
+    };
+
+    for (int row = 4; row < 14; ++row) {
+        // ===== ПОСУДА — НАИМЕНОВАНИЕ =====
+        QComboBox *dishNameBox = new QComboBox();
+        dishNameBox->setEditable(true);
+        dishNameBox->addItem("");
+        dishNameBox->addItems(dishes.keys());
+        table1->setCellWidget(row, 1, dishNameBox);
+
+        QCompleter *dishNameCompleter = new QCompleter(dishes.keys(), this);
+        dishNameCompleter->setCaseSensitivity(Qt::CaseInsensitive);
+        dishNameCompleter->setFilterMode(Qt::MatchContains);
+        dishNameBox->setCompleter(dishNameCompleter);
+
+        // ===== ПОСУДА — КОД =====
+        QComboBox *dishCodeBox = new QComboBox();
+        dishCodeBox->setEditable(true);
+        dishCodeBox->addItem("");
+        dishCodeBox->addItems(dishes.values());
+        table1->setCellWidget(row, 2, dishCodeBox);
+
+        QCompleter *dishCodeCompleter = new QCompleter(dishes.values(), this);
+        dishCodeCompleter->setCaseSensitivity(Qt::CaseInsensitive);
+        dishCodeCompleter->setFilterMode(Qt::MatchContains);
+        dishCodeBox->setCompleter(dishCodeCompleter);
+
+        // ===== ЕИ — НАИМЕНОВАНИЕ =====
+        QComboBox *unitNameBox = new QComboBox();
+        unitNameBox->setEditable(true);
+        unitNameBox->addItem("");
+        unitNameBox->addItems(okei.keys());
+        table1->setCellWidget(row, 3, unitNameBox);
+
+        QCompleter *unitNameCompleter = new QCompleter(okei.keys(), this);
+        unitNameCompleter->setCaseSensitivity(Qt::CaseInsensitive);
+        unitNameCompleter->setFilterMode(Qt::MatchContains);
+        unitNameBox->setCompleter(unitNameCompleter);
+
+        // ===== ЕИ — КОД ОКЕИ =====
+        QComboBox *unitCodeBox = new QComboBox();
+        unitCodeBox->setEditable(true);
+        unitCodeBox->addItem("");
+        unitCodeBox->addItems(okei.values());
+        table1->setCellWidget(row, 4, unitCodeBox);
+
+        QCompleter *unitCodeCompleter = new QCompleter(okei.values(), this);
+        unitCodeCompleter->setCaseSensitivity(Qt::CaseInsensitive);
+        unitCodeCompleter->setFilterMode(Qt::MatchContains);
+        unitCodeBox->setCompleter(unitCodeCompleter);
+
+        // ===== АВТОЗАПОЛНЕНИЕ ПОСУДЫ =====
+        connect(dishNameBox, &QComboBox::currentTextChanged, this, [=]() {
+            QSignalBlocker blocker(dishCodeBox);
+            dishCodeBox->setCurrentText(dishes.value(dishNameBox->currentText(), ""));
+        });
+
+        connect(dishCodeBox, &QComboBox::currentTextChanged, this, [=]() {
+            QSignalBlocker blocker(dishNameBox);
+            dishNameBox->setCurrentText(dishes.key(dishCodeBox->currentText(), ""));
+        });
+
+        // ===== АВТОЗАПОЛНЕНИЕ ОКЕИ =====
+        connect(unitNameBox, &QComboBox::currentTextChanged, this, [=]() {
+            QSignalBlocker blocker(unitCodeBox);
+            unitCodeBox->setCurrentText(okei.value(unitNameBox->currentText(), ""));
+        });
+
+        connect(unitCodeBox, &QComboBox::currentTextChanged, this, [=]() {
+            QSignalBlocker blocker(unitNameBox);
+            unitNameBox->setCurrentText(okei.key(unitCodeBox->currentText(), ""));
+        });
+    }
 
     // Верхняя шапка
     table1->setSpan(0, 0, 3, 1);
@@ -261,224 +376,109 @@ MainWindow::MainWindow(QWidget *parent)
 
     layout1->addSpacing(15); // отступ перед кнопкой
 
-    QPushButton *saveButton = new QPushButton("Сохранить");
+    QPushButton *saveButton = new QPushButton("Сохранить в Excel");
     QPushButton *addRowButton = new QPushButton("Добавить строку");
-    QPushButton *closeButton = new QPushButton("Закрыть");
+
+    connect(addRowButton, &QPushButton::clicked, this, [=]() {
+        // Удаляем текущую строку с подписями (если есть)
+        int lastRow = table1->rowCount();
+        if (table1->cellWidget(lastRow - 1, 0)) {
+            table1->removeRow(lastRow - 1);
+        }
+
+        // Добавляем новую строку с данными
+        int newRow = table1->rowCount();
+        table1->insertRow(newRow);
+
+        for (int c = 0; c < 21; ++c) {
+            table1->setItem(newRow, c, new QTableWidgetItem(""));
+        }
+
+        // === QComboBox ===
+        QComboBox *dishNameBox = new QComboBox();
+        dishNameBox->setEditable(true);
+        dishNameBox->addItem("");
+        dishNameBox->addItems(dishes.keys());
+        QCompleter *dishNameCompleter = new QCompleter(dishes.keys(), this);
+        dishNameCompleter->setCaseSensitivity(Qt::CaseInsensitive);
+        dishNameCompleter->setFilterMode(Qt::MatchContains);
+        dishNameBox->setCompleter(dishNameCompleter);
+        table1->setCellWidget(newRow, 1, dishNameBox);
+
+        QComboBox *dishCodeBox = new QComboBox();
+        dishCodeBox->setEditable(true);
+        dishCodeBox->addItem("");
+        dishCodeBox->addItems(dishes.values());
+        QCompleter *dishCodeCompleter = new QCompleter(dishes.values(), this);
+        dishCodeCompleter->setCaseSensitivity(Qt::CaseInsensitive);
+        dishCodeCompleter->setFilterMode(Qt::MatchContains);
+        dishCodeBox->setCompleter(dishCodeCompleter);
+        table1->setCellWidget(newRow, 2, dishCodeBox);
+
+        QComboBox *unitNameBox = new QComboBox();
+        unitNameBox->setEditable(true);
+        unitNameBox->addItem("");
+        unitNameBox->addItems(okei.keys());
+        QCompleter *unitNameCompleter = new QCompleter(okei.keys(), this);
+        unitNameCompleter->setCaseSensitivity(Qt::CaseInsensitive);
+        unitNameCompleter->setFilterMode(Qt::MatchContains);
+        unitNameBox->setCompleter(unitNameCompleter);
+        table1->setCellWidget(newRow, 3, unitNameBox);
+
+        QComboBox *unitCodeBox = new QComboBox();
+        unitCodeBox->setEditable(true);
+        unitCodeBox->addItem("");
+        unitCodeBox->addItems(okei.values());
+        QCompleter *unitCodeCompleter = new QCompleter(okei.values(), this);
+        unitCodeCompleter->setCaseSensitivity(Qt::CaseInsensitive);
+        unitCodeCompleter->setFilterMode(Qt::MatchContains);
+        unitCodeBox->setCompleter(unitCodeCompleter);
+        table1->setCellWidget(newRow, 4, unitCodeBox);
+
+        connect(dishNameBox, &QComboBox::currentTextChanged, this, [=]() {
+            QSignalBlocker blocker(dishCodeBox);
+            dishCodeBox->setCurrentText(dishes.value(dishNameBox->currentText(), ""));
+        });
+        connect(dishCodeBox, &QComboBox::currentTextChanged, this, [=]() {
+            QSignalBlocker blocker(dishNameBox);
+            dishNameBox->setCurrentText(dishes.key(dishCodeBox->currentText(), ""));
+        });
+        connect(unitNameBox, &QComboBox::currentTextChanged, this, [=]() {
+            QSignalBlocker blocker(unitCodeBox);
+            unitCodeBox->setCurrentText(okei.value(unitNameBox->currentText(), ""));
+        });
+        connect(unitCodeBox, &QComboBox::currentTextChanged, this, [=]() {
+            QSignalBlocker blocker(unitNameBox);
+            unitNameBox->setCurrentText(okei.key(unitCodeBox->currentText(), ""));
+        });
+
+        // Добавляем строку с подписями в конец
+        int footerRow = table1->rowCount();
+        table1->insertRow(footerRow);
+        table1->setSpan(footerRow, 0, 1, 5);
+
+        QWidget *newFooter = new QWidget();
+        QHBoxLayout *footerLayout = new QHBoxLayout(newFooter);
+        footerLayout->setContentsMargins(5, 0, 0, 0);
+        footerLayout->addWidget(new QLabel("Получено, возвращено, бой, лом, недостача. Подпись:"));
+        footerLayout->addWidget(new QLineEdit());
+        footerLayout->addStretch();
+        table1->setCellWidget(footerRow, 0, newFooter);
+
+        for (int c = 5; c < 21; ++c) {
+            table1->setItem(footerRow, c, new QTableWidgetItem(""));
+        }
+    });
 
     saveButton->setFixedWidth(150);
     addRowButton->setFixedWidth(150);
-    closeButton->setFixedWidth(150);
 
     QHBoxLayout *buttonLayout = new QHBoxLayout();
     buttonLayout->addStretch();  // выравнивание по правому краю
     buttonLayout->addWidget(addRowButton);
     buttonLayout->addSpacing(10);
     buttonLayout->addWidget(saveButton);
-    buttonLayout->addSpacing(10);
-    buttonLayout->addWidget(closeButton);
     layout1->addLayout(buttonLayout);
-
-    // === ВЕРСИЯ 2: Современный интерфейс ===
-    QScrollArea *scrollArea = new QScrollArea(modernTab);
-    scrollArea->setWidgetResizable(true);
-    QWidget *scrollContent = new QWidget();
-    scrollArea->setWidget(scrollContent);
-    QVBoxLayout *modernLayout = new QVBoxLayout(scrollContent);
-
-    // Заголовок
-    QHBoxLayout *modernHeaderLayout = new QHBoxLayout();
-    QLabel *iconLabel = new QLabel();
-    iconLabel->setPixmap(QPixmap(":/icons/icons/tableware.png").scaled(32, 32, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-    modernHeaderLayout->addWidget(iconLabel);
-    QLabel *titleLabel = new QLabel("Журнал учёта столовой посуды");
-    titleLabel->setStyleSheet("font-weight: bold; font-size: 18px;");
-    modernHeaderLayout->addWidget(titleLabel);
-    modernHeaderLayout->addStretch();
-    modernLayout->addLayout(modernHeaderLayout);
-    modernLayout->addSpacing(10);
-
-    // Основные реквизиты
-    QWidget *requisitesContainer = new QWidget();
-    QFormLayout *requisitesForm = new QFormLayout(requisitesContainer);
-    requisitesForm->addRow("Код формы по ОКУД:", new QLabel("0330519"));
-    requisitesForm->addRow("по ОКПО:", new QLineEdit());
-    requisitesForm->addRow("Организация:", new QLineEdit());
-    requisitesForm->addRow("Структурное подразделение:", new QLineEdit());
-    requisitesForm->addRow("Вид деятельности по ОКДП:", new QLineEdit());
-
-    QToolButton *toggleButton = new QToolButton();
-    toggleButton->setStyleSheet("QToolButton { border: none; }");
-    toggleButton->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-    toggleButton->setArrowType(Qt::RightArrow);
-    toggleButton->setText("Основные реквизиты");
-    toggleButton->setCheckable(true);
-    toggleButton->setChecked(false);
-
-    connect(toggleButton, &QToolButton::toggled, requisitesContainer, &QWidget::setVisible);
-    connect(toggleButton, &QToolButton::toggled, [=](bool checked) {
-        toggleButton->setArrowType(checked ? Qt::DownArrow : Qt::RightArrow);
-    });
-
-    requisitesContainer->setVisible(false);  // скрыто по умолчанию
-
-    modernLayout->addWidget(toggleButton);
-    modernLayout->addWidget(requisitesContainer);
-    modernLayout->addSpacing(10);
-
-    // Период
-    QGroupBox *periodBox = new QGroupBox("Период учёта");
-    QHBoxLayout *modernPeriodLayout = new QHBoxLayout(periodBox);
-    modernPeriodLayout->addWidget(new QLabel("С:"));
-    modernPeriodLayout->addWidget(new QLineEdit());
-    modernPeriodLayout->addSpacing(20);
-    modernPeriodLayout->addWidget(new QLabel("По:"));
-    modernPeriodLayout->addWidget(new QLineEdit());
-    modernLayout->addWidget(periodBox);
-
-    // Ответственное лицо
-    QGroupBox *responsibleBox = new QGroupBox("Ответственное лицо");
-    QFormLayout *responsibleLayout = new QFormLayout(responsibleBox);
-    responsibleLayout->addRow("Должность:", new QLineEdit());
-    responsibleLayout->addRow("ФИО:", new QLineEdit());
-    modernLayout->addWidget(responsibleBox);
-
-    // Таблица
-    QLabel *tableTitle = new QLabel("Таблица учёта");
-    tableTitle->setStyleSheet("font-weight: bold;");
-    modernLayout->addWidget(tableTitle);
-
-    QTableWidget *table2 = new QTableWidget(11, 21);
-    table2->setFrameShape(QFrame::NoFrame);
-
-    // Шапка
-    table2->setSpan(0, 0, 3, 1);
-    QTableWidgetItem *m_col0 = new QTableWidgetItem("Номер по порядку");
-    m_col0->setTextAlignment(Qt::AlignCenter);
-    m_col0->setFlags(m_col0->flags() & ~Qt::ItemIsEditable);
-    table2->setItem(0, 0, m_col0);
-
-    table2->setSpan(0, 1, 1, 2);
-    QTableWidgetItem *m_col1 = new QTableWidgetItem("Посуда и приборы");
-    m_col1->setTextAlignment(Qt::AlignCenter);
-    m_col1->setFlags(m_col1->flags() & ~Qt::ItemIsEditable);
-    table2->setItem(0, 1, m_col1);
-
-    QTableWidgetItem *m_col1_1 = new QTableWidgetItem("наименование");
-    m_col1_1->setTextAlignment(Qt::AlignCenter);
-    m_col1_1->setFlags(m_col1_1->flags() & ~Qt::ItemIsEditable);
-    table2->setItem(1, 1, m_col1_1);
-    table2->setSpan(1, 1, 2, 1);
-
-    QTableWidgetItem *m_col2 = new QTableWidgetItem("код");
-    m_col2->setTextAlignment(Qt::AlignCenter);
-    m_col2->setFlags(m_col2->flags() & ~Qt::ItemIsEditable);
-    table2->setItem(1, 2, m_col2);
-    table2->setSpan(1, 2, 2, 1);
-
-    table2->setSpan(0, 3, 1, 2);
-    QTableWidgetItem *m_col3 = new QTableWidgetItem("Единица измерения");
-    m_col3->setTextAlignment(Qt::AlignCenter);
-    m_col3->setFlags(m_col3->flags() & ~Qt::ItemIsEditable);
-    table2->setItem(0, 3, m_col3);
-
-    QTableWidgetItem *m_col3_1 = new QTableWidgetItem("наименование");
-    m_col3_1->setTextAlignment(Qt::AlignCenter);
-    m_col3_1->setFlags(m_col3_1->flags() & ~Qt::ItemIsEditable);
-    table2->setItem(1, 3, m_col3_1);
-    table2->setSpan(1, 3, 2, 1);
-
-    QTableWidgetItem *m_col4 = new QTableWidgetItem("код по ОКЕИ");
-    m_col4->setTextAlignment(Qt::AlignCenter);
-    m_col4->setFlags(m_col4->flags() & ~Qt::ItemIsEditable);
-    table2->setItem(1, 4, m_col4);
-    table2->setSpan(1, 4, 2, 1);
-
-    table2->setSpan(0, 5, 1, 16);
-    QTableWidgetItem *m_fioHeader = new QTableWidgetItem("Фамилия, имя, отчество");
-    m_fioHeader->setTextAlignment(Qt::AlignCenter);
-    m_fioHeader->setFlags(m_fioHeader->flags() & ~Qt::ItemIsEditable);
-    table2->setItem(0, 5, m_fioHeader);
-
-    for (int i = 0; i < 4; ++i) {
-        int start = 5 + i * 4;
-        table2->setSpan(1, start, 1, 4);
-        table2->setItem(1, start, new QTableWidgetItem(""));
-    }
-
-
-    QStringList m_actions = {"получено", "возвращено", "бой, лом", "недостача"};
-    int m_col = 5;
-    for (int group = 0; group < 4; ++group) {
-        for (const QString &action : m_actions) {
-            QTableWidgetItem *subHeader = new QTableWidgetItem(action);
-            subHeader->setTextAlignment(Qt::AlignCenter);
-            subHeader->setFlags(subHeader->flags() & ~Qt::ItemIsEditable);
-            table2->setItem(2, m_col++, subHeader);
-        }
-    }
-
-    for (int i = 0; i < 21; ++i) {
-        QTableWidgetItem *numItem = new QTableWidgetItem(QString::number(i + 1));
-        numItem->setTextAlignment(Qt::AlignCenter);
-        numItem->setFlags(numItem->flags() & ~Qt::ItemIsEditable);
-        table2->setItem(3, i, numItem);
-    }
-
-    for (int r = 4; r < 14; ++r) {
-        for (int c = 0; c < 21; ++c) {
-            table2->setItem(r, c, new QTableWidgetItem(""));
-        }
-    }
-
-    table2->setSpan(10, 0, 1, 5);
-    QWidget *modernFooterWidget = new QWidget();
-    QHBoxLayout *modernFooterLayoutTable = new QHBoxLayout(modernFooterWidget);
-    modernFooterLayoutTable->setContentsMargins(5, 0, 0, 0);
-    modernFooterLayoutTable->addWidget(new QLabel("Получено, возвращено, бой, лом, недостача. Подпись:"));
-    modernFooterLayoutTable->addWidget(new QLineEdit());
-    modernFooterLayoutTable->addStretch();
-    table2->setCellWidget(10, 0, modernFooterWidget);
-
-    for (int c = 5; c < 21; ++c) {
-        table2->setItem(10, c, new QTableWidgetItem(""));
-    }
-
-    table2->horizontalHeader()->hide();
-    table2->verticalHeader()->hide();
-    table2->setEditTriggers(QAbstractItemView::AllEditTriggers);
-    table2->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-    table2->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    modernLayout->addWidget(table2);
-
-    // Подпись
-    QGroupBox *footerBox = new QGroupBox("Материально ответственное лицо");
-    QHBoxLayout *modernFooterLayout = new QHBoxLayout(footerBox);
-    modernFooterLayout->addWidget(new QLabel("Должность:"));
-    modernFooterLayout->addWidget(new QLineEdit());
-    modernFooterLayout->addWidget(new QLabel("Подпись:"));
-    modernFooterLayout->addWidget(new QLineEdit());
-    modernFooterLayout->addWidget(new QLabel("Расшифровка:"));
-    modernFooterLayout->addWidget(new QLineEdit());
-    modernLayout->addWidget(footerBox);
-
-    // Кнопки
-    QHBoxLayout *modernButtonLayout = new QHBoxLayout();
-    QPushButton *addBtn = new QPushButton(QIcon(":/icons/icons/add.png"), "  Добавить строку");
-    QPushButton *saveBtn = new QPushButton(QIcon(":/icons/icons/save.png"), "  Сохранить");
-    QPushButton *closeBtn = new QPushButton(QIcon(":/icons/icons/exit.png"), "  Закрыть");
-    addBtn->setFixedWidth(160);
-    saveBtn->setFixedWidth(160);
-    closeBtn->setFixedWidth(160);
-    modernButtonLayout->addStretch();
-    modernButtonLayout->addWidget(addBtn);
-    modernButtonLayout->addSpacing(10);
-    modernButtonLayout->addWidget(saveBtn);
-    modernButtonLayout->addSpacing(10);
-    modernButtonLayout->addWidget(closeBtn);
-    modernLayout->addLayout(modernButtonLayout);
-
-    modernTab->setLayout(new QVBoxLayout());
-    modernTab->layout()->addWidget(scrollArea);
 }
 
 MainWindow::~MainWindow()
